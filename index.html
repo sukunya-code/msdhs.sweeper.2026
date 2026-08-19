@@ -137,7 +137,7 @@
                     <div class="flex items-start space-x-3 bg-rose-950/40 p-3 rounded-xl border border-rose-500/30">
                         <div class="text-rose-400 text-2xl md:text-3xl"><i class="fa-solid fa-hand-sparkles"></i></div>
                         <div>
-                            <div class="font-bold text-rose-300 text-sm md:text-base">สไลด์ปัดทิ้ง (ปัญหาสังคม)</div>
+                            <div class="font-bold text-rose-300 text-sm md:text-base">สไลด์ปัดทิ้ง (ปัญหาสังคม) — ไม่ได้แต้ม แต่ถ้าปล่อยหลุดจอ -50 แต้ม!</div>
                             <div class="text-xs text-slate-300">ความรุนแรง, แก๊งคอลเซ็นเตอร์, ค้ามนุษย์, ยาเสพติด, บุลลี่, ข่าวปลอม, พนันออนไลน์</div>
                         </div>
                     </div>
@@ -460,7 +460,6 @@
                     gameState.score += Math.round(item.points * mult);
                     gameState.collectedCount++;
                 } else {
-                    gameState.score += Math.round(120 * mult);
                     gameState.swipedCount++;
                 }
                 createExplosion(item.x, item.y, '#c084fc', '💥');
@@ -501,10 +500,9 @@
                     gameState.collectedCount++;
                     createExplosion(item.x, item.y, item.color, '✨ ' + item.name);
                 } else {
-                    const mult = registerHit();
-                    gameState.score += Math.round(120 * mult);
+                    registerHit(); // still keeps the combo alive, but no score for clearing a problem
                     gameState.swipedCount++;
-                    createExplosion(item.x, item.y, '#38bdf8', 'ปัดเรียบ! 💨');
+                    createExplosion(item.x, item.y, '#38bdf8', 'ปัดทิ้งแล้ว! 💨');
                 }
                 updateHUD();
             }
@@ -555,9 +553,17 @@
 
                 if (item.y - item.radius > canvas.height) {
                     if (item.category === 'pos') {
+                        // missed a benefit that should have been collected
                         gameState.score = Math.max(0, gameState.score - 50);
                         gameState.combo = 0;
                         gameState.comboMultiplier = 1;
+                        updateHUD();
+                    } else if (item.category === 'neg') {
+                        // let a social problem slip through unaddressed
+                        gameState.score = Math.max(0, gameState.score - 50);
+                        gameState.combo = 0;
+                        gameState.comboMultiplier = 1;
+                        createExplosion(item.x, canvas.height - 20, '#ef4444', 'พลาด! ปัญหาหลุดรอด -50');
                         updateHUD();
                     }
                     gameState.items.splice(i, 1);
@@ -853,8 +859,10 @@
             return `${yyyy}-${mm}-${dd}`;
         }
 
+        const STATS_KEY = 'pm_sweeper_all_stats';
+
         function getAllStats() {
-            return JSON.parse(localStorage.getItem('pm_sweeper_all_stats') || '[]');
+            return JSON.parse(localStorage.getItem(STATS_KEY) || '[]');
         }
 
         function saveScore(name, score) {
@@ -871,7 +879,7 @@
                 time: nowTime
             });
 
-            localStorage.setItem('pm_sweeper_all_stats', JSON.stringify(allStats));
+            localStorage.setItem(STATS_KEY, JSON.stringify(allStats));
         }
 
         function populateDateSelector() {
@@ -902,11 +910,11 @@
         }
 
         function renderLeaderboardForDate(selectedDate) {
+            const container = document.getElementById('leaderboard-list');
             const allStats = getAllStats();
             const filtered = allStats.filter(item => item.date === selectedDate);
             filtered.sort((a, b) => b.score - a.score);
 
-            const container = document.getElementById('leaderboard-list');
             container.innerHTML = '';
 
             if (filtered.length === 0) {
@@ -988,7 +996,7 @@
                 const targetDate = document.getElementById('select-lb-date').value;
                 let allStats = getAllStats();
                 allStats = allStats.filter(item => item.date !== targetDate);
-                localStorage.setItem('pm_sweeper_all_stats', JSON.stringify(allStats));
+                localStorage.setItem(STATS_KEY, JSON.stringify(allStats));
                 populateDateSelector();
                 renderLeaderboardForDate(document.getElementById('select-lb-date').value);
                 alert(`ลบข้อมูลสถิติประจำวันที่ ${targetDate} เรียบร้อยแล้ว`);
