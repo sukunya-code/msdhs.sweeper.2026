@@ -1,0 +1,1001 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>MSDHS Sweeper - ปัดปัญหากวาดความสุข</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Font (Kanit) -->
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * {
+            font-family: 'Kanit', sans-serif;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: none;
+            box-sizing: border-box;
+        }
+        body {
+            background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #312e81 100%);
+            overflow: hidden;
+        }
+        .glow-title {
+            text-shadow: 0 0 20px rgba(236, 72, 153, 0.6), 0 0 40px rgba(99, 102, 241, 0.4);
+        }
+        .glow-box {
+            box-shadow: 0 0 25px rgba(99, 102, 241, 0.3);
+        }
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(15, 23, 42, 0.6);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #6366f1;
+            border-radius: 3px;
+        }
+        /* Virtual Keyboard Styling */
+        .vk-key {
+            background-color: rgba(30, 41, 59, 0.95);
+            color: #f8fafc;
+            border: 1px solid rgba(99, 102, 241, 0.35);
+            border-radius: 0.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1rem;
+            font-weight: 600;
+            padding: 0.5rem 0.2rem;
+            transition: all 0.05s ease;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+            touch-action: manipulation;
+        }
+        .vk-key:active {
+            background-color: #6366f1;
+            color: #ffffff;
+            transform: scale(0.95);
+        }
+        .vk-special {
+            background-color: rgba(51, 65, 85, 0.95);
+            color: #38bdf8;
+            font-size: 0.85rem;
+        }
+        .vk-submit {
+            background-color: #059669;
+            color: #ffffff;
+            border-color: #10b981;
+            font-weight: 700;
+        }
+        .vk-submit:active {
+            background-color: #047857;
+        }
+    </style>
+</head>
+<body class="h-screen w-screen text-white flex flex-col justify-between p-2 md:p-4 relative">
+
+    <!-- TOP BAR / HEADER -->
+    <header class="flex justify-between items-center z-10 bg-slate-900/80 backdrop-blur-md p-3 md:p-4 rounded-2xl border border-indigo-500/30 shadow-lg">
+        <div class="flex items-center space-x-3">
+            <div class="w-10 h-10 md:w-12 md:h-12 bg-gradient-to-tr from-pink-500 to-indigo-500 rounded-xl flex items-center justify-center text-white font-black text-[10px] md:text-xs shadow-md border border-white/20">
+                MSDHS
+            </div>
+            <div>
+                <h1 class="text-lg md:text-2xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-pink-400 via-purple-300 to-indigo-300 tracking-wide">
+                    MSDHS Sweeper
+                </h1>
+                <p class="text-[10px] md:text-xs text-pink-300 font-light">ปัดปัญหากวาดความสุข • กระทรวง พม.</p>
+            </div>
+        </div>
+
+        <!-- IN-GAME HUD -->
+        <div id="game-hud" class="hidden flex items-center space-x-3 md:space-x-6">
+            <div class="text-center bg-slate-800/80 px-3 py-1 rounded-xl border border-amber-500/30">
+                <div class="text-[10px] md:text-xs text-amber-300">เวลาเหลือ</div>
+                <div id="time-display" class="text-xl md:text-3xl font-black text-amber-400">30</div>
+            </div>
+            <div class="text-center bg-slate-800/80 px-4 py-1 rounded-xl border border-emerald-500/30">
+                <div class="text-[10px] md:text-xs text-emerald-300">คะแนนรวม</div>
+                <div id="score-display" class="text-xl md:text-3xl font-black text-emerald-400">0</div>
+            </div>
+            <div class="hidden text-center bg-amber-950/60 px-3 py-1 rounded-xl border border-amber-400/50 animate-pulse">
+                <div class="text-[10px] md:text-xs text-amber-300">คอมโบ</div>
+                <div id="combo-display" class="text-xl md:text-3xl font-black text-amber-300">x1.0</div>
+            </div>
+        </div>
+    </header>
+
+    <!-- GAME CANVAS AREA -->
+    <main class="relative flex-1 my-2 w-full h-full rounded-3xl overflow-hidden border border-indigo-500/20 bg-slate-950/40 backdrop-blur-sm glow-box">
+        <canvas id="gameCanvas" class="absolute inset-0 w-full h-full cursor-crosshair"></canvas>
+
+        <!-- START SCREEN OVERLAY -->
+        <div id="start-screen" class="absolute inset-0 z-20 flex flex-col items-center justify-center p-4 md:p-6 bg-slate-950/80 backdrop-blur-md">
+            <div class="text-center max-w-2xl w-full">
+                <div class="inline-block p-2 md:p-3 bg-indigo-500/10 rounded-full mb-3 border border-indigo-500/30 animate-pulse">
+                    <span class="text-xs font-bold text-pink-400 uppercase tracking-widest px-3 py-1 bg-pink-500/20 rounded-full">Interactive Touch Game</span>
+                </div>
+                <h2 class="text-3xl md:text-6xl font-black glow-title mb-2 text-white">
+                    MSDHS Sweeper
+                </h2>
+                <p class="text-base md:text-2xl text-indigo-200 mb-6 font-medium">
+                    "ปัดปัญหากวาดความสุข สร้างสังคมดีร่วมกัน"
+                </p>
+
+                <!-- Instructions Grid -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-3 text-left mb-6 bg-slate-900/90 p-4 rounded-2xl border border-slate-700">
+                    <div class="flex items-start space-x-3 bg-emerald-950/40 p-3 rounded-xl border border-emerald-500/30">
+                        <div class="text-emerald-400 text-2xl md:text-3xl"><i class="fa-solid fa-hand-holding-heart"></i></div>
+                        <div>
+                            <div class="font-bold text-emerald-300 text-sm md:text-base">สไลด์เก็บ (ความสุข/สิทธิประโยชน์)</div>
+                            <div class="text-xs text-slate-300">เด็ก/ผู้สูงอายุ/คนพิการ/ครอบครัว, พ.ร.บ. คุ้มครองต่างๆ, บ้านมั่นคง, สายด่วน 1300</div>
+                        </div>
+                    </div>
+                    <div class="flex items-start space-x-3 bg-rose-950/40 p-3 rounded-xl border border-rose-500/30">
+                        <div class="text-rose-400 text-2xl md:text-3xl"><i class="fa-solid fa-hand-sparkles"></i></div>
+                        <div>
+                            <div class="font-bold text-rose-300 text-sm md:text-base">สไลด์ปัดทิ้ง (ปัญหาสังคม)</div>
+                            <div class="text-xs text-slate-300">ความรุนแรง, แก๊งคอลเซ็นเตอร์, ค้ามนุษย์, ยาเสพติด, บุลลี่, ข่าวปลอม, พนันออนไลน์</div>
+                        </div>
+                    </div>
+                    <div class="flex items-start space-x-3 bg-amber-950/40 p-3 rounded-xl border border-amber-500/30">
+                        <div class="text-amber-400 text-2xl md:text-3xl"><i class="fa-solid fa-bolt"></i></div>
+                        <div>
+                            <div class="font-bold text-amber-300 text-sm md:text-base">ไอเทมพิเศษ &amp; คอมโบ</div>
+                            <div class="text-xs text-slate-300">⭐ โบนัสแต้ม, ⏱️ หยุดเวลา, 💣 กวาดทั้งจอ • ปัด/เก็บติดกันไว ๆ เพื่อปั๊มคอมโบคูณแต้ม สูงสุด x3! ยิ่งใกล้หมดเวลาของจะไหลเร็วขึ้น</div>
+                        </div>
+                    </div>
+                </div>
+
+                <button id="btn-start" class="w-full md:w-auto px-8 py-3.5 bg-gradient-to-r from-pink-500 via-purple-600 to-indigo-600 hover:from-pink-600 hover:to-indigo-700 text-white font-extrabold text-xl md:text-2xl rounded-2xl shadow-xl hover:shadow-indigo-500/50 transition-all transform hover:scale-105 active:scale-95 border border-white/20">
+                    <i class="fa-solid fa-play mr-2"></i>เริ่มเล่นเกม (30 วินาที)
+                </button>
+            </div>
+        </div>
+
+        <!-- GAME OVER / NAME ENTRY SCREEN -->
+        <div id="gameover-screen" class="hidden absolute inset-0 z-20 flex flex-col items-center justify-center p-3 md:p-4 bg-slate-950/95 backdrop-blur-md overflow-y-auto">
+            <div class="bg-slate-900 border border-indigo-500/30 p-4 md:p-6 rounded-3xl max-w-lg w-full text-center shadow-2xl my-auto">
+                <div class="text-amber-400 text-3xl mb-1"><i class="fa-solid fa-trophy"></i></div>
+                <h3 class="text-xl md:text-2xl font-black text-white mb-1">สรุปผลงานของคุณ</h3>
+                <div id="final-title" class="text-indigo-300 text-sm md:text-base font-bold mb-3">"ตัวตึง MSDHS Sweeper"</div>
+
+                <!-- Stats Container -->
+                <div class="grid grid-cols-3 gap-2 mb-3">
+                    <div class="bg-slate-800/80 p-2 rounded-xl border border-slate-700">
+                        <div class="text-[10px] md:text-xs text-slate-400">กวาดความสุข</div>
+                        <div id="stat-collected" class="text-base md:text-lg font-black text-emerald-400">0</div>
+                    </div>
+                    <div class="bg-slate-800/80 p-2 rounded-xl border border-slate-700">
+                        <div class="text-[10px] md:text-xs text-slate-400">ปัดปัญหา</div>
+                        <div id="stat-swiped" class="text-base md:text-lg font-black text-rose-400">0</div>
+                    </div>
+                    <div class="bg-indigo-950/60 p-2 rounded-xl border border-indigo-500/40">
+                        <div class="text-[10px] md:text-xs text-indigo-300">คะแนนรวม</div>
+                        <div id="stat-total" class="text-lg md:text-xl font-black text-amber-300">0</div>
+                    </div>
+                </div>
+
+                <!-- Name Input Area -->
+                <div class="mb-3 text-left">
+                    <div class="flex justify-between items-center mb-1 px-1">
+                        <label class="text-xs text-indigo-200 font-bold">พิมพ์ชื่อของคุณลงในตารางสถิติ</label>
+                        <span id="char-counter" class="text-[10px] font-bold text-amber-400">0/10 ตัวอักษร</span>
+                    </div>
+                    <div class="flex space-x-2">
+                        <input type="text" id="player-name" maxlength="10" placeholder="สัมผัสคีย์บอร์ดด้านล่างเพื่อพิมพ์ชื่อ" class="flex-1 bg-slate-950 border-2 border-indigo-500/60 text-amber-300 text-center text-lg font-bold rounded-xl px-3 py-2 focus:outline-none focus:border-pink-500 tracking-wider shadow-inner" readonly>
+                        <button id="btn-random-name" class="px-3 bg-slate-800 hover:bg-slate-700 text-indigo-300 rounded-xl text-xs font-bold border border-slate-600 flex items-center space-x-1 shrink-0">
+                            <i class="fa-solid fa-dice text-sm"></i>
+                            <span>สุ่มชื่อ</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- BALANCED VIRTUAL KEYBOARD -->
+                <div class="bg-slate-950/90 p-2.5 rounded-2xl border border-slate-800 mb-4 shadow-inner">
+                    <!-- Layout Mode Switcher -->
+                    <div class="flex justify-between items-center mb-2">
+                        <div class="flex space-x-1.5">
+                            <button id="kb-mode-th" class="px-3 py-1 bg-indigo-600 text-white rounded-lg text-xs font-bold shadow">ภาษาไทย</button>
+                            <button id="kb-mode-en" class="px-3 py-1 bg-slate-800 text-slate-300 rounded-lg text-xs font-bold">EN</button>
+                            <button id="kb-mode-num" class="px-3 py-1 bg-slate-800 text-slate-300 rounded-lg text-xs font-bold">123</button>
+                        </div>
+                        <button id="vk-clear" class="text-xs text-rose-400 hover:text-rose-300 px-2.5 py-1 bg-rose-950/50 rounded-lg border border-rose-900/60 font-medium">
+                            <i class="fa-solid fa-rotate-left mr-1"></i>ล้างข้อความ
+                        </button>
+                    </div>
+
+                    <!-- Keyboard Grid Container -->
+                    <div id="keyboard-container" class="flex flex-col space-y-1.5">
+                        <!-- Rendered by JavaScript -->
+                    </div>
+                </div>
+
+                <!-- Submit & Replay Actions -->
+                <div class="flex space-x-3">
+                    <button id="btn-submit-score" class="flex-1 py-3 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white font-extrabold text-base md:text-lg rounded-2xl shadow-lg border border-emerald-400/30 flex items-center justify-center transition">
+                        <i class="fa-solid fa-circle-check mr-2 text-xl"></i>ตกลง / บันทึกคะแนน
+                    </button>
+                    <button id="btn-replay" class="py-3 px-5 bg-slate-800 hover:bg-slate-700 text-indigo-200 font-bold text-sm md:text-base rounded-2xl border border-slate-600 flex items-center justify-center">
+                        <i class="fa-solid fa-rotate-right mr-1.5"></i>เล่นอีกครั้ง
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- LEADERBOARD MODAL -->
+        <div id="leaderboard-modal" class="hidden absolute inset-0 z-30 flex items-center justify-center p-3 md:p-4 bg-slate-950/90 backdrop-blur-md">
+            <div class="bg-slate-900 border border-amber-500/30 p-4 md:p-6 rounded-3xl max-w-lg w-full shadow-2xl flex flex-col max-h-[90vh]">
+                <div class="flex justify-between items-center mb-3 pb-3 border-b border-slate-800">
+                    <div class="flex items-center space-x-2 text-amber-400">
+                        <i class="fa-solid fa-trophy text-2xl"></i>
+                        <h3 class="text-lg md:text-xl font-black text-white">ตารางอันดับสถิติ MSDHS Sweeper</h3>
+                    </div>
+                    <button id="btn-close-leaderboard" class="text-slate-400 hover:text-white text-xl p-1"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+
+                <!-- Date Selector -->
+                <div class="flex items-center justify-between mb-3 bg-slate-950/60 p-2 rounded-xl border border-slate-800">
+                    <label class="text-xs text-indigo-300 font-bold flex items-center"><i class="fa-solid fa-calendar-day mr-1.5"></i>เลือกวันที่บันทึก:</label>
+                    <select id="select-lb-date" class="bg-slate-800 text-amber-300 font-bold text-xs py-1 px-3 rounded-lg border border-indigo-500/30 focus:outline-none">
+                        <!-- Dynamic dates -->
+                    </select>
+                </div>
+
+                <!-- Leaderboard List -->
+                <div id="leaderboard-list" class="flex-1 overflow-y-auto space-y-2 pr-1 mb-4">
+                    <!-- Dynamic List -->
+                </div>
+
+                <!-- Admin & Footer Tools -->
+                <div class="border-t border-slate-800 pt-3 flex flex-col space-y-2">
+                    <div class="flex justify-between space-x-2">
+                        <button id="btn-export-csv" class="flex-1 py-2 bg-slate-800 hover:bg-slate-700 text-emerald-400 text-xs font-bold rounded-xl border border-emerald-500/30 flex items-center justify-center">
+                            <i class="fa-solid fa-file-excel mr-1.5"></i>ดาวน์โหลดสถิติ (Excel/CSV)
+                        </button>
+                        <button id="btn-clear-date-lb" class="py-2 px-3 bg-rose-950/60 hover:bg-rose-900 text-rose-300 text-xs font-bold rounded-xl border border-rose-500/30 flex items-center justify-center">
+                            <i class="fa-solid fa-trash-can mr-1"></i>ลบสถิติวันนี้
+                        </button>
+                    </div>
+                    <button id="btn-restart-from-lb" class="w-full py-3 bg-gradient-to-r from-pink-500 to-indigo-600 hover:from-pink-600 hover:to-indigo-700 text-white font-bold rounded-xl shadow-lg">
+                        กลับสู่หน้าหลัก / เริ่มเล่นใหม่
+                    </button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- FOOTER -->
+    <footer class="flex justify-between items-center z-10 px-2 py-1">
+        <div class="text-xs text-slate-400 flex items-center space-x-2">
+            <span class="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+            <span>ศูนย์ช่วยเหลือสังคม โทร 1300 (ฟรี 24 ชม.)</span>
+        </div>
+        <button id="btn-open-lb" class="px-3 py-1.5 bg-slate-800/80 hover:bg-slate-700 text-amber-300 border border-amber-500/30 rounded-xl text-xs font-bold flex items-center space-x-2 backdrop-blur-md">
+            <i class="fa-solid fa-ranking-star"></i>
+            <span>ตารางอันดับสถิติ</span>
+        </button>
+    </footer>
+
+    <!-- GAME ENGINE & VIRTUAL KEYBOARD -->
+    <script>
+        const CONFIG = {
+            gameDuration: 30,
+            spawnInterval: 600,       // spawn rate at the START of the round
+            minSpawnInterval: 320,    // spawn rate at the END of the round (ramps down = faster)
+            speedRampFactor: 0.7,     // items fall up to +70% faster by the end of the round
+            comboWindowMs: 1300,      // max gap between hits to keep a combo alive
+            comboStep: 5,             // every N combo hits raises the multiplier
+            comboMultiplierStep: 0.5, // multiplier increase per step
+            comboMultiplierCap: 3,    // max multiplier
+            specialChance: 0.09,      // chance a spawned item is a special power-up instead of normal
+            adminPassword: '1300',
+            itemTypes: [
+                // === POSITIVE ITEMS (Green/Blue/Purple - Must Collect) ===
+                { id: 'p1', name: 'เด็ก/เยาวชน', category: 'pos', icon: '👶', color: '#10b981' },
+                { id: 'p2', name: 'ผู้สูงอายุ', category: 'pos', icon: '👵', color: '#10b981' },
+                { id: 'p3', name: 'คนพิการ', category: 'pos', icon: '♿', color: '#10b981' },
+                { id: 'p4', name: 'สตรี/ครอบครัว', category: 'pos', icon: '👩‍👧‍👦', color: '#10b981' },
+                { id: 'p5', name: 'คนไร้พึ่ง/ผู้ด้อยโอกาส', category: 'pos', icon: '🤝', color: '#10b981' },
+                { id: 'p6', name: 'ชุมชน/เคหะ', category: 'pos', icon: '🏘️', color: '#10b981' },
+                { id: 'p7', name: 'สายด่วน 1300', category: 'pos', icon: '📞', color: '#f59e0b', points: 200 },
+                { id: 'p8', name: 'พ.ร.บ. คุ้มครองเด็ก', category: 'pos', icon: '📜', color: '#3b82f6' },
+                { id: 'p9', name: 'พ.ร.บ. ผู้สูงอายุ', category: 'pos', icon: '📜', color: '#3b82f6' },
+                { id: 'p10', name: 'พ.ร.บ. ส่งเสริมคนพิการ', category: 'pos', icon: '📜', color: '#3b82f6' },
+                { id: 'p11', name: 'ความเท่าเทียมเพศ', category: 'pos', icon: '⚖️', color: '#8b5cf6' },
+                { id: 'p12', name: 'บ้านมั่นคง พม.', category: 'pos', icon: '🏠', color: '#8b5cf6' },
+                { id: 'p13', name: 'ศูนย์ช่วยเหลือสังคม OSCC', category: 'pos', icon: '🆘', color: '#f59e0b', points: 200 },
+                { id: 'p14', name: 'กองทุนคุ้มครองเด็ก', category: 'pos', icon: '🧸', color: '#10b981' },
+                { id: 'p15', name: 'เบี้ยยังชีพผู้สูงอายุ', category: 'pos', icon: '💳', color: '#3b82f6' },
+                { id: 'p16', name: 'ศูนย์พัฒนาเด็กเล็ก', category: 'pos', icon: '🏫', color: '#10b981' },
+
+                // === NEGATIVE ITEMS (Red - Must Swipe Away) ===
+                { id: 'n1', name: 'ความรุนแรง', category: 'neg', icon: '💥', color: '#ef4444' },
+                { id: 'n2', name: 'แก๊งคอลเซ็นเตอร์', category: 'neg', icon: '🏴‍☠️', color: '#ef4444' },
+                { id: 'n3', name: 'การค้ามนุษย์', category: 'neg', icon: '⛓️', color: '#ef4444' },
+                { id: 'n4', name: 'สารเสพติด', category: 'neg', icon: '🚫', color: '#ef4444' },
+                { id: 'n5', name: 'ข่าวปลอม/หลอกลวง', category: 'neg', icon: '⚠️', color: '#ef4444' },
+                { id: 'n6', name: 'ขอทานผิดกฎหมาย', category: 'neg', icon: '🚷', color: '#ef4444' },
+                { id: 'n7', name: 'การล่วงละเมิด', category: 'neg', icon: '🛑', color: '#ef4444' },
+                { id: 'n8', name: 'การบุลลี่', category: 'neg', icon: '🤬', color: '#ef4444' },
+                { id: 'n9', name: 'พนันออนไลน์', category: 'neg', icon: '🎰', color: '#ef4444' },
+                { id: 'n10', name: 'รุกล้ำพื้นที่ป่า', category: 'neg', icon: '🪓', color: '#ef4444' },
+                { id: 'n11', name: 'ความรุนแรงในครอบครัว', category: 'neg', icon: '🩹', color: '#ef4444' },
+                { id: 'n12', name: 'หนี้นอกระบบ', category: 'neg', icon: '💸', color: '#ef4444' },
+                { id: 'n13', name: 'ทอดทิ้งผู้สูงอายุ', category: 'neg', icon: '😔', color: '#ef4444' }
+            ],
+            // === SPECIAL POWER-UP ITEMS (rare, spawn via specialChance) ===
+            specialItemTypes: [
+                { id: 's1', name: 'โบนัสทอง', category: 'special', effect: 'gold', icon: '⭐', color: '#fbbf24' },
+                { id: 's2', name: 'หยุดเวลา', category: 'special', effect: 'freeze', icon: '⏱️', color: '#22d3ee' },
+                { id: 's3', name: 'กวาดทั้งจอ', category: 'special', effect: 'bomb', icon: '💣', color: '#c084fc' }
+            ]
+        };
+
+        let gameState = {
+            active: false,
+            score: 0,
+            timeLeft: CONFIG.gameDuration,
+            collectedCount: 0,
+            swipedCount: 0,
+            items: [],
+            particles: [],
+            trails: [],
+            lastSpawnTime: 0,
+            timerInterval: null,
+            startTime: 0,
+            combo: 0,
+            comboMultiplier: 1,
+            lastHitTime: 0,
+            frozen: false,
+            freezeTimeout: null
+        };
+
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        function resizeCanvas() {
+            const rect = canvas.parentElement.getBoundingClientRect();
+            canvas.width = rect.width;
+            canvas.height = rect.height;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        let isPointerDown = false;
+        let lastPointerPos = { x: 0, y: 0 };
+
+        function getCanvasPoint(e) {
+            const rect = canvas.getBoundingClientRect();
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            return { x: clientX - rect.left, y: clientY - rect.top };
+        }
+
+        function handlePointerStart(e) {
+            if (!gameState.active) return;
+            isPointerDown = true;
+            const pos = getCanvasPoint(e);
+            lastPointerPos = pos;
+        }
+
+        function handlePointerMove(e) {
+            if (!gameState.active || !isPointerDown) return;
+            const pos = getCanvasPoint(e);
+            gameState.trails.push({ x: pos.x, y: pos.y, alpha: 1.0, radius: 12 });
+            checkSwipeInteractions(lastPointerPos, pos);
+            lastPointerPos = pos;
+        }
+
+        function handlePointerEnd() { isPointerDown = false; }
+
+        canvas.addEventListener('mousedown', handlePointerStart);
+        canvas.addEventListener('mousemove', handlePointerMove);
+        window.addEventListener('mouseup', handlePointerEnd);
+        canvas.addEventListener('touchstart', (e) => { e.preventDefault(); handlePointerStart(e); }, { passive: false });
+        canvas.addEventListener('touchmove', (e) => { e.preventDefault(); handlePointerMove(e); }, { passive: false });
+        window.addEventListener('touchend', handlePointerEnd);
+
+        function getElapsedFrac() {
+            const elapsed = performance.now() - gameState.startTime;
+            return Math.min(1, Math.max(0, elapsed / (CONFIG.gameDuration * 1000)));
+        }
+
+        function getSpawnInterval() {
+            const frac = getElapsedFrac();
+            return CONFIG.spawnInterval - frac * (CONFIG.spawnInterval - CONFIG.minSpawnInterval);
+        }
+
+        function spawnItem() {
+            const isSpecial = Math.random() < CONFIG.specialChance;
+            const template = isSpecial
+                ? CONFIG.specialItemTypes[Math.floor(Math.random() * CONFIG.specialItemTypes.length)]
+                : CONFIG.itemTypes[Math.floor(Math.random() * CONFIG.itemTypes.length)];
+            const radius = Math.min(canvas.width, canvas.height) * 0.055 + 15;
+            const x = Math.random() * (canvas.width - radius * 2) + radius;
+            const speedBoost = 1 + getElapsedFrac() * CONFIG.speedRampFactor;
+
+            gameState.items.push({
+                ...template,
+                x: x, y: -radius,
+                radius: radius,
+                speedY: (Math.random() * 2 + 2.5) * speedBoost,
+                speedX: (Math.random() - 0.5) * 1.5,
+                rotation: 0,
+                rotSpeed: (Math.random() - 0.5) * 0.05,
+                points: template.points || 100
+            });
+        }
+
+        function registerHit() {
+            const now = performance.now();
+            gameState.combo = (now - gameState.lastHitTime <= CONFIG.comboWindowMs) ? gameState.combo + 1 : 1;
+            gameState.lastHitTime = now;
+            const steps = Math.min(
+                Math.floor(gameState.combo / CONFIG.comboStep) * CONFIG.comboMultiplierStep,
+                CONFIG.comboMultiplierCap - 1
+            );
+            gameState.comboMultiplier = 1 + steps;
+            if (gameState.combo > 0 && gameState.combo % CONFIG.comboStep === 0) {
+                createExplosion(canvas.width / 2, canvas.height * 0.3, '#fbbf24', `COMBO x${gameState.combo}! 🔥`);
+            }
+            return gameState.comboMultiplier;
+        }
+
+        function activateFreeze() {
+            gameState.frozen = true;
+            clearTimeout(gameState.freezeTimeout);
+            gameState.freezeTimeout = setTimeout(() => { gameState.frozen = false; }, 2000);
+        }
+
+        function triggerBomb() {
+            const mult = registerHit();
+            for (let i = gameState.items.length - 1; i >= 0; i--) {
+                const item = gameState.items[i];
+                if (item.category === 'special') continue;
+                if (item.category === 'pos') {
+                    gameState.score += Math.round(item.points * mult);
+                    gameState.collectedCount++;
+                } else {
+                    gameState.score += Math.round(120 * mult);
+                    gameState.swipedCount++;
+                }
+                createExplosion(item.x, item.y, '#c084fc', '💥');
+                gameState.items.splice(i, 1);
+            }
+        }
+
+        function checkSwipeInteractions(p1, p2) {
+            const dx = p2.x - p1.x;
+            const dy = p2.y - p1.y;
+            if (Math.hypot(dx, dy) < 5) return;
+
+            for (let i = gameState.items.length - 1; i >= 0; i--) {
+                const item = gameState.items[i];
+                const distToLine = pointToSegmentDistance(item.x, item.y, p1.x, p1.y, p2.x, p2.y);
+                if (distToLine >= item.radius + 10) continue;
+
+                gameState.items.splice(i, 1); // remove the hit item exactly once
+
+                if (item.category === 'special') {
+                    if (item.effect === 'gold') {
+                        const mult = registerHit();
+                        gameState.score += Math.round(300 * mult);
+                        createExplosion(item.x, item.y, item.color, '+300 โบนัส! ⭐');
+                    } else if (item.effect === 'freeze') {
+                        registerHit();
+                        activateFreeze();
+                        createExplosion(item.x, item.y, item.color, 'หยุดเวลา 2 วิ! ⏱️');
+                    } else if (item.effect === 'bomb') {
+                        createExplosion(item.x, item.y, item.color, 'กวาดทั้งจอ! 💣');
+                        triggerBomb();
+                        updateHUD();
+                        return; // screen just got cleared, nothing left to check against this swipe
+                    }
+                } else if (item.category === 'pos') {
+                    const mult = registerHit();
+                    gameState.score += Math.round(item.points * mult);
+                    gameState.collectedCount++;
+                    createExplosion(item.x, item.y, item.color, '✨ ' + item.name);
+                } else {
+                    const mult = registerHit();
+                    gameState.score += Math.round(120 * mult);
+                    gameState.swipedCount++;
+                    createExplosion(item.x, item.y, '#38bdf8', 'ปัดเรียบ! 💨');
+                }
+                updateHUD();
+            }
+        }
+
+        function pointToSegmentDistance(px, py, x1, y1, x2, y2) {
+            const l2 = (x2 - x1) ** 2 + (y2 - y1) ** 2;
+            if (l2 === 0) return Math.hypot(px - x1, py - y1);
+            let t = ((px - x1) * (x2 - x1) + (py - y1) * (y2 - y1)) / l2;
+            t = Math.max(0, Math.min(1, t));
+            return Math.hypot(px - (x1 + t * (x2 - x1)), py - (y1 + t * (y2 - y1)));
+        }
+
+        function createExplosion(x, y, color, labelText) {
+            for (let i = 0; i < 14; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const speed = Math.random() * 6 + 2;
+                gameState.particles.push({
+                    x: x, y: y,
+                    vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed,
+                    color: color, alpha: 1, radius: Math.random() * 4 + 2
+                });
+            }
+            gameState.particles.push({
+                x: x, y: y - 10, vx: 0, vy: -1.5,
+                text: labelText, color: color, alpha: 1, isText: true
+            });
+        }
+
+        function update(now) {
+            if (!gameState.active) return;
+            if (now - gameState.lastSpawnTime > getSpawnInterval()) {
+                spawnItem();
+                gameState.lastSpawnTime = now;
+            }
+
+            if (gameState.combo > 0 && now - gameState.lastHitTime > CONFIG.comboWindowMs) {
+                gameState.combo = 0;
+                gameState.comboMultiplier = 1;
+                updateHUD();
+            }
+
+            for (let i = gameState.items.length - 1; i >= 0; i--) {
+                const item = gameState.items[i];
+                item.y += item.speedY;
+                item.x += item.speedX;
+                item.rotation += item.rotSpeed;
+
+                if (item.y - item.radius > canvas.height) {
+                    if (item.category === 'pos') {
+                        gameState.score = Math.max(0, gameState.score - 50);
+                        gameState.combo = 0;
+                        gameState.comboMultiplier = 1;
+                        updateHUD();
+                    }
+                    gameState.items.splice(i, 1);
+                }
+            }
+
+            for (let i = gameState.trails.length - 1; i >= 0; i--) {
+                const t = gameState.trails[i];
+                t.alpha -= 0.05;
+                t.radius *= 0.92;
+                if (t.alpha <= 0) gameState.trails.splice(i, 1);
+            }
+
+            for (let i = gameState.particles.length - 1; i >= 0; i--) {
+                const p = gameState.particles[i];
+                p.x += p.vx; p.y += p.vy;
+                p.alpha -= 0.025;
+                if (p.alpha <= 0) gameState.particles.splice(i, 1);
+            }
+        }
+
+        function render() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            for (let t of gameState.trails) {
+                ctx.beginPath();
+                ctx.arc(t.x, t.y, t.radius, 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(236, 72, 153, ${t.alpha})`;
+                ctx.shadowColor = '#ec4899';
+                ctx.shadowBlur = 10;
+                ctx.fill();
+                ctx.shadowBlur = 0;
+            }
+
+            for (let item of gameState.items) {
+                ctx.save();
+                ctx.translate(item.x, item.y);
+                ctx.rotate(item.rotation);
+
+                let bgFill = 'rgba(239, 68, 68, 0.2)';
+                if (item.category === 'pos') bgFill = 'rgba(16, 185, 129, 0.2)';
+                else if (item.category === 'special') bgFill = 'rgba(251, 191, 36, 0.25)';
+
+                ctx.beginPath();
+                ctx.arc(0, 0, item.radius, 0, Math.PI * 2);
+                ctx.fillStyle = bgFill;
+                ctx.fill();
+                ctx.lineWidth = item.category === 'special' ? 4 : 3;
+                ctx.strokeStyle = item.color;
+                if (item.category === 'special') {
+                    ctx.shadowColor = item.color;
+                    ctx.shadowBlur = 15;
+                }
+                ctx.stroke();
+                ctx.shadowBlur = 0;
+
+                ctx.beginPath();
+                ctx.arc(0, 0, item.radius * 0.85, 0, Math.PI * 2);
+                ctx.fillStyle = '#0f172a';
+                ctx.fill();
+
+                ctx.font = `${item.radius * 0.85}px sans-serif`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(item.icon, 0, -2);
+
+                ctx.restore();
+                ctx.font = 'bold 12px Kanit';
+                ctx.fillStyle = '#ffffff';
+                ctx.textAlign = 'center';
+                ctx.fillText(item.name, item.x, item.y + item.radius + 14);
+            }
+
+            for (let p of gameState.particles) {
+                ctx.globalAlpha = Math.max(0, p.alpha);
+                if (p.isText) {
+                    ctx.font = 'bold 18px Kanit';
+                    ctx.fillStyle = p.color;
+                    ctx.textAlign = 'center';
+                    ctx.fillText(p.text, p.x, p.y);
+                } else {
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                    ctx.fillStyle = p.color;
+                    ctx.fill();
+                }
+                ctx.globalAlpha = 1.0;
+            }
+        }
+
+        function gameLoop(now) {
+            update(now);
+            render();
+            requestAnimationFrame(gameLoop);
+        }
+        requestAnimationFrame(gameLoop);
+
+        function startGame() {
+            gameState.active = true;
+            gameState.score = 0;
+            gameState.timeLeft = CONFIG.gameDuration;
+            gameState.collectedCount = 0;
+            gameState.swipedCount = 0;
+            gameState.items = [];
+            gameState.particles = [];
+            gameState.trails = [];
+            gameState.lastSpawnTime = performance.now();
+            gameState.startTime = performance.now();
+            gameState.combo = 0;
+            gameState.comboMultiplier = 1;
+            gameState.lastHitTime = 0;
+            gameState.frozen = false;
+            clearTimeout(gameState.freezeTimeout);
+
+            document.getElementById('start-screen').classList.add('hidden');
+            document.getElementById('gameover-screen').classList.add('hidden');
+            document.getElementById('game-hud').classList.remove('hidden');
+            updateHUD();
+
+            clearInterval(gameState.timerInterval);
+            gameState.timerInterval = setInterval(() => {
+                if (gameState.frozen) return; // "หยุดเวลา" power-up pauses the countdown
+                gameState.timeLeft--;
+                updateHUD();
+                if (gameState.timeLeft <= 0) endGame();
+            }, 1000);
+        }
+
+        function updateHUD() {
+            document.getElementById('score-display').textContent = gameState.score;
+            document.getElementById('time-display').textContent = gameState.timeLeft;
+            const comboEl = document.getElementById('combo-display');
+            if (comboEl) {
+                if (gameState.combo >= CONFIG.comboStep) {
+                    comboEl.textContent = `x${gameState.comboMultiplier.toFixed(1)} (${gameState.combo})`;
+                    comboEl.parentElement.classList.remove('hidden');
+                } else {
+                    comboEl.parentElement.classList.add('hidden');
+                }
+            }
+        }
+
+        function endGame() {
+            gameState.active = false;
+            clearInterval(gameState.timerInterval);
+            clearTimeout(gameState.freezeTimeout);
+            gameState.frozen = false;
+            document.getElementById('game-hud').classList.add('hidden');
+
+            document.getElementById('stat-collected').textContent = gameState.collectedCount;
+            document.getElementById('stat-swiped').textContent = gameState.swipedCount;
+            document.getElementById('stat-total').textContent = gameState.score;
+
+            let title = "MSDHS Sweeper มือใหม่";
+            if (gameState.score >= 2500) title = "🏆 ตัวตึง MSDHS Sweeper ขั้นเทพ!";
+            else if (gameState.score >= 1500) title = "🌟 นักกวาดความสุขประจำ Expo";
+            else if (gameState.score >= 800) title = "🛡️ ผู้พิทักษ์สังคมสายสปีด";
+            document.getElementById('final-title').textContent = title;
+
+            document.getElementById('player-name').value = '';
+            updateCharCounter();
+            renderKeyboard('th');
+            document.getElementById('gameover-screen').classList.remove('hidden');
+        }
+
+        // --- KEYBOARD SYSTEM ---
+        const nameInput = document.getElementById('player-name');
+        const charCounter = document.getElementById('char-counter');
+
+        const KEYBOARD_LAYOUTS = {
+            th: [
+                ['ก', 'ข', 'ค', 'ง', 'จ', 'ฉ', 'ช', 'ซ', 'ด', 'ต'],
+                ['ถ', 'ท', 'ธ', 'น', 'บ', 'ป', 'ผ', 'ฝ', 'พ', 'ฟ'],
+                ['ม', 'ย', 'ร', 'ล', 'ว', 'ศ', 'ษ', 'ส', 'ห', 'อ'],
+                ['ะ', 'า', 'ิ', 'ี', 'ึ', 'ื', 'ุ', 'ู', 'เ', 'แ'],
+                ['โ', 'ใ', 'ไ', 'ำ', '็', '่', '้', '๊', '๋', '์']
+            ],
+            en: [
+                ['Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P'],
+                ['A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L'],
+                ['Z', 'X', 'C', 'V', 'B', 'N', 'M']
+            ],
+            num: [
+                ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'],
+                ['-', '_', '.', '@', '#', '$', '%', '&', '*', '+']
+            ]
+        };
+
+        function updateCharCounter() {
+            const len = nameInput.value.length;
+            charCounter.textContent = `${len}/10 ตัวอักษร`;
+        }
+
+        function renderKeyboard(mode) {
+            const container = document.getElementById('keyboard-container');
+            container.innerHTML = '';
+
+            document.getElementById('kb-mode-th').className = mode === 'th' ? 'px-3 py-1 bg-indigo-600 text-white rounded-lg text-xs font-bold shadow' : 'px-3 py-1 bg-slate-800 text-slate-300 rounded-lg text-xs font-bold';
+            document.getElementById('kb-mode-en').className = mode === 'en' ? 'px-3 py-1 bg-indigo-600 text-white rounded-lg text-xs font-bold shadow' : 'px-3 py-1 bg-slate-800 text-slate-300 rounded-lg text-xs font-bold';
+            document.getElementById('kb-mode-num').className = mode === 'num' ? 'px-3 py-1 bg-indigo-600 text-white rounded-lg text-xs font-bold shadow' : 'px-3 py-1 bg-slate-800 text-slate-300 rounded-lg text-xs font-bold';
+
+            const layout = KEYBOARD_LAYOUTS[mode];
+
+            layout.forEach(row => {
+                const rowDiv = document.createElement('div');
+                rowDiv.className = 'grid gap-1 justify-center';
+                rowDiv.style.gridTemplateColumns = `repeat(${row.length}, minmax(0, 1fr))`;
+
+                row.forEach(key => {
+                    const btn = document.createElement('button');
+                    btn.className = 'vk-key';
+                    btn.textContent = key;
+                    btn.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        if (nameInput.value.length < 10) {
+                            nameInput.value += key;
+                            updateCharCounter();
+                        }
+                    });
+                    rowDiv.appendChild(btn);
+                });
+                container.appendChild(rowDiv);
+            });
+
+            // Control Keys Row
+            const ctrlRow = document.createElement('div');
+            ctrlRow.className = 'grid grid-cols-6 gap-1 pt-1';
+
+            const spaceBtn = document.createElement('button');
+            spaceBtn.className = 'vk-key vk-special col-span-3 text-xs font-bold';
+            spaceBtn.innerHTML = '<i class="fa-solid fa-ruler-horizontal mr-1"></i>เว้นวรรค';
+            spaceBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                if (nameInput.value.length < 10 && nameInput.value.length > 0) {
+                    nameInput.value += ' ';
+                    updateCharCounter();
+                }
+            });
+
+            const backBtn = document.createElement('button');
+            backBtn.className = 'vk-key vk-special col-span-1 text-xs bg-rose-950/80 text-rose-300 border-rose-800/80';
+            backBtn.innerHTML = '<i class="fa-solid fa-backspace"></i>';
+            backBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                nameInput.value = nameInput.value.slice(0, -1);
+                updateCharCounter();
+            });
+
+            const enterBtn = document.createElement('button');
+            enterBtn.className = 'vk-key vk-submit col-span-2 text-xs font-extrabold';
+            enterBtn.innerHTML = '<i class="fa-solid fa-check mr-1"></i>ตกลง';
+            enterBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                submitPlayerScore();
+            });
+
+            ctrlRow.appendChild(spaceBtn);
+            ctrlRow.appendChild(backBtn);
+            ctrlRow.appendChild(enterBtn);
+            container.appendChild(ctrlRow);
+        }
+
+        document.getElementById('kb-mode-th').addEventListener('click', () => renderKeyboard('th'));
+        document.getElementById('kb-mode-en').addEventListener('click', () => renderKeyboard('en'));
+        document.getElementById('kb-mode-num').addEventListener('click', () => renderKeyboard('num'));
+
+        document.getElementById('vk-clear').addEventListener('click', () => {
+            nameInput.value = '';
+            updateCharCounter();
+        });
+
+        const randomNames = ['สายปัด1300', 'พม_Hero', 'กวาดสุข', 'น้องพม', 'MSDHS_Sweeper', 'ปัดเป๊ะ', 'เซฟสังคม', 'ฮีโร่พม', 'พมปังมาก'];
+        document.getElementById('btn-random-name').addEventListener('click', () => {
+            nameInput.value = randomNames[Math.floor(Math.random() * randomNames.length)];
+            updateCharCounter();
+        });
+
+        function submitPlayerScore() {
+            const name = nameInput.value.trim() || 'ผู้เล่น พม.';
+            saveScore(name, gameState.score);
+            populateDateSelector();
+            renderLeaderboardForDate(getTodayString());
+            document.getElementById('gameover-screen').classList.add('hidden');
+            document.getElementById('leaderboard-modal').classList.remove('hidden');
+        }
+
+        // --- STATS & STORAGE ---
+        function getTodayString() {
+            const today = new Date();
+            const yyyy = today.getFullYear();
+            const mm = String(today.getMonth() + 1).padStart(2, '0');
+            const dd = String(today.getDate()).padStart(2, '0');
+            return `${yyyy}-${mm}-${dd}`;
+        }
+
+        function getAllStats() {
+            return JSON.parse(localStorage.getItem('pm_sweeper_all_stats') || '[]');
+        }
+
+        function saveScore(name, score) {
+            const allStats = getAllStats();
+            const today = getTodayString();
+            const nowTime = new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
+
+            allStats.push({
+                name: name || 'ผู้เล่น พม.',
+                score: score,
+                collected: gameState.collectedCount,
+                swiped: gameState.swipedCount,
+                date: today,
+                time: nowTime
+            });
+
+            localStorage.setItem('pm_sweeper_all_stats', JSON.stringify(allStats));
+        }
+
+        function populateDateSelector() {
+            const allStats = getAllStats();
+            const select = document.getElementById('select-lb-date');
+            select.innerHTML = '';
+
+            const dates = [...new Set(allStats.map(item => item.date))];
+            const today = getTodayString();
+            if (!dates.includes(today)) dates.unshift(today);
+
+            dates.sort().reverse();
+
+            dates.forEach(d => {
+                const opt = document.createElement('option');
+                opt.value = d;
+                opt.textContent = d === today ? `วันนี้ (${d})` : d;
+                select.appendChild(opt);
+            });
+
+            select.value = today;
+        }
+
+        function escapeHtml(str) {
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+
+        function renderLeaderboardForDate(selectedDate) {
+            const allStats = getAllStats();
+            const filtered = allStats.filter(item => item.date === selectedDate);
+            filtered.sort((a, b) => b.score - a.score);
+
+            const container = document.getElementById('leaderboard-list');
+            container.innerHTML = '';
+
+            if (filtered.length === 0) {
+                container.innerHTML = `<div class="text-center text-slate-500 py-8">ยังไม่มีอันดับของวันที่ ${selectedDate}</div>`;
+                return;
+            }
+
+            filtered.slice(0, 10).forEach((item, index) => {
+                const rankColor = index === 0 ? 'text-amber-400 font-extrabold' : index === 1 ? 'text-slate-300' : index === 2 ? 'text-amber-600' : 'text-slate-400';
+                const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `#${index + 1}`;
+                
+                const div = document.createElement('div');
+                div.className = `flex items-center justify-between p-3 bg-slate-800/60 rounded-xl border border-slate-700/50`;
+                div.innerHTML = `
+                    <div class="flex items-center space-x-3">
+                        <span class="text-xl w-8 text-center ${rankColor}">${medal}</span>
+                        <div>
+                            <div class="font-bold text-white text-sm md:text-base">${escapeHtml(item.name)}</div>
+                            <div class="text-[10px] md:text-xs text-slate-400">เวลา ${item.time}น. • กวาดสุข ${item.collected} | ปัดปัญหา ${item.swiped}</div>
+                        </div>
+                    </div>
+                    <div class="text-lg md:text-xl font-black text-amber-300">${item.score} <span class="text-xs font-normal text-slate-400">คะแนน</span></div>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        function exportStatsToCSV() {
+            const allStats = getAllStats();
+            if (allStats.length === 0) {
+                alert('ยังไม่มีข้อมูลสถิติให้ดาวน์โหลด');
+                return;
+            }
+
+            let csvContent = "\uFEFFลำดับ,วันที่,เวลา,ชื่อผู้เล่น,คะแนนรวม,กวาดความสุข(ชิ้น),ปัดปัญหาสังคม(ชิ้น)\n";
+            const csvEscape = (val) => `"${String(val).replace(/"/g, '""')}"`;
+            allStats.forEach((item, index) => {
+                csvContent += `${index + 1},${csvEscape(item.date)},${csvEscape(item.time)},${csvEscape(item.name)},${item.score},${item.collected},${item.swiped}\n`;
+            });
+
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `รายงานสถิติ_MSDHS_Sweeper_${getTodayString()}.csv`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        // --- EVENT LISTENERS ---
+        document.getElementById('btn-start').addEventListener('click', startGame);
+        document.getElementById('btn-replay').addEventListener('click', startGame);
+        document.getElementById('btn-submit-score').addEventListener('click', submitPlayerScore);
+
+        document.getElementById('btn-open-lb').addEventListener('click', () => {
+            populateDateSelector();
+            renderLeaderboardForDate(document.getElementById('select-lb-date').value || getTodayString());
+            document.getElementById('leaderboard-modal').classList.remove('hidden');
+        });
+
+        document.getElementById('select-lb-date').addEventListener('change', (e) => {
+            renderLeaderboardForDate(e.target.value);
+        });
+
+        document.getElementById('btn-close-leaderboard').addEventListener('click', () => {
+            document.getElementById('leaderboard-modal').classList.add('hidden');
+        });
+
+        document.getElementById('btn-restart-from-lb').addEventListener('click', () => {
+            document.getElementById('leaderboard-modal').classList.add('hidden');
+            document.getElementById('start-screen').classList.remove('hidden');
+        });
+
+        document.getElementById('btn-export-csv').addEventListener('click', exportStatsToCSV);
+
+        document.getElementById('btn-clear-date-lb').addEventListener('click', () => {
+            const pwd = prompt('กรุณาใส่รหัสผ่านเจ้าหน้าที่เพื่อล้างสถิติของวันนี้:');
+            if (pwd === CONFIG.adminPassword) {
+                const targetDate = document.getElementById('select-lb-date').value;
+                let allStats = getAllStats();
+                allStats = allStats.filter(item => item.date !== targetDate);
+                localStorage.setItem('pm_sweeper_all_stats', JSON.stringify(allStats));
+                populateDateSelector();
+                renderLeaderboardForDate(document.getElementById('select-lb-date').value);
+                alert(`ลบข้อมูลสถิติประจำวันที่ ${targetDate} เรียบร้อยแล้ว`);
+            } else if (pwd !== null) {
+                alert('รหัสผ่านไม่ถูกต้อง');
+            }
+        });
+    </script>
+</body>
+</html>
